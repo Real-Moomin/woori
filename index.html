@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>악보 재생기 (모바일 최적화)</title>
+  <style>
+    :root{
+      --bg:#121212; --panel:#222; --muted:#9aa0a6; --accent:#35a8ff;
+    }
+    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Noto Sans KR',sans-serif;background:var(--bg);color:#fff}
+    .wrap{max-width:480px;margin:0 auto;height:100vh;display:flex;flex-direction:column;border-left:1px solid rgba(255,255,255,0.02);border-right:1px solid rgba(255,255,255,0.02)}
+
+    header{padding:18px 16px 8px;border-bottom:1px solid rgba(255,255,255,0.03);background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent)}
+    header h1{margin:0;font-size:20px;text-align:center;font-weight:700}
+    header p{margin:6px 0 0;color:var(--muted);font-size:12px;text-align:center}
+
+    main{flex:1;overflow:auto;padding:12px}
+    *::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+* {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+    /* carousel */
+    .carousel{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px}
+    .sheet{flex:0 0 100%;scroll-snap-align:center;background:var(--panel);border-radius:12px;padding:1px;display:flex;align-items:center;justify-content:center}
+    .sheet img{width:95%;height:auto;border-radius:0px;object-fit:contain;cursor:pointer}
+
+    /* part buttons */
+    .parts{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+    .part-btn{background:transparent;border:0;color:var(--accent);padding:6px 8px;border-radius:0px;font-weight:600;cursor:pointer}
+    .part-btn.active{background:rgba(53,168,255,0.12)}
+
+    /* info text */
+    .notes{margin-top:12px;color:var(--muted);font-size:13px;line-height:1.5;margin-bottom: 120px}
+
+    /* bottom fixed player */
+    .player{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:480px;background:linear-gradient(180deg, rgba(0,0,0,0.6), rgba(0,0,0,0.9));border-top:1px solid rgba(255,255,255,0.04);padding:10px}
+    .player-inner{display:flex;flex-direction:column;gap:8px}
+    .time-row{display:flex;align-items:center;gap:12px}
+    .time-text{font-size:13px;color:var(--muted);min-width:48px}
+    .progress{flex:1;height:8px;background:rgba(255,255,255,0.08);border-radius:8px;position:relative;cursor:pointer}
+    .progress .bar{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--accent);border-radius:8px}
+    .controls{display:flex;align-items:center;justify-content:space-between}
+    .play-btn{background:transparent;border:0;color:#fff;font-size:18px;padding:8px;cursor:pointer}
+
+    /* modal zoom */
+    .zoom-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;z-index:40}
+    .zoom-overlay.active{display:flex}
+    .zoom-img{max-width:92%;max-height:97%;border-radius:6px;cursor:pointer}
+    .close-x{position:fixed;right:12px;top:12px;color:#fff;font-size:26px;z-index:41}
+
+    /* small screens tweaks */
+    @media (max-width:420px){header h1{font-size:18px}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>우리</h1>
+      <p>12월 21일 교제의날 오프닝 곡 연습을 위한 페이지입니다.</p>
+    </header>
+    <main>
+      <div class="carousel" id="carousel">
+        <!-- 9 images: replace src with actual sheet images -->
+        <div class="sheet"><img src="images/score1.jpg" alt="score 1" data-index="1"></div>
+        <div class="sheet"><img src="images/score2.jpg" alt="score 2" data-index="2"></div>
+        <div class="sheet"><img src="images/score3.jpg" alt="score 3" data-index="3"></div>
+        <div class="sheet"><img src="images/score4.jpg" alt="score 4" data-index="4"></div>
+        <div class="sheet"><img src="images/score5.jpg" alt="score 5" data-index="5"></div>
+        <div class="sheet"><img src="images/score6.jpg" alt="score 6" data-index="6"></div>
+        <div class="sheet"><img src="images/score7.jpg" alt="score 7" data-index="7"></div>
+        <div class="sheet"><img src="images/score8.jpg" alt="score 8" data-index="8"></div>
+        <div class="sheet"><img src="images/score9.jpg" alt="score 9" data-index="9"></div>
+      </div>
+
+      <div class="parts" id="parts">
+        <button class="part-btn" data-src="files/s.mp3">소프라노</button>
+        <button class="part-btn" data-src="files/t.mp3">테너</button>
+        <button class="part-btn" data-src="files/b.mp3">베이스</button>
+        <button class="part-btn" data-src="files/p.mp3">반주</button>
+      </div>
+
+      <div class="notes">
+        <p>     솔로 파트는 목사 두 분이 불러주십니다.<br>
+      연습 모임 일정은 카톡으로 공지하겠습니다.<br>
+      <br>
+      청년 자매 = 소프라노,  청년 형제 = 베이스<br>
+      엄태욱B, 김남혁B, 김종협B, 김병모B = 테너<br>
+      <br>
+      꼭 반주와 본인 파트음을 익혀서 와주세요! 🥺
+
+</p>
+      </div>
+
+    </main>
+
+    <div class="player" id="player">
+      <div class="player-inner">
+        <div class="time-row">
+          <div class="time-text" id="current">0:00</div>
+          <div class="progress" id="progress"><div class="bar" id="bar"></div></div>
+          <div class="time-text" id="duration">0:00</div>
+        </div>
+        <div class="controls">
+          <div>
+            <button class="play-btn" id="playPause">▶︎</button>
+          </div>
+          <div style="color:var(--muted);font-size:13px"> </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- zoom modal -->
+    <div class="zoom-overlay" id="zoom">
+      <div class="close-x" id="closeX">✕</div>
+      <img src="" alt="zoomed" class="zoom-img" id="zoomImg">
+    </div>
+
+    <!-- hidden audio element -->
+    <audio id="audio"></audio>
+  </div>
+
+  <script>
+    const parts = document.querySelectorAll('.part-btn');
+    const audio = document.getElementById('audio');
+    const playPause = document.getElementById('playPause');
+    const currentText = document.getElementById('current');
+    const durationText = document.getElementById('duration');
+    const progress = document.getElementById('progress');
+    const bar = document.getElementById('bar');
+    let activeBtn = null;
+
+    // Part buttons: set audio src and play
+    parts.forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        // toggle active
+        if(activeBtn === btn){
+          // if same button, toggle play/pause
+          if(!audio.paused) audio.pause(); else audio.play();
+          return;
+        }
+        parts.forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        activeBtn = btn;
+        const src = btn.dataset.src;
+        // set src. user should replace filenames later
+        audio.src = src;
+        audio.currentTime = 0;
+        audio.play().catch(()=>{});
+        playPause.textContent = '▮▮';
+      })
+    })
+
+    // play/pause button
+    playPause.addEventListener('click', ()=>{
+      if(!audio.src) return; // no track selected
+      if(audio.paused){audio.play(); playPause.textContent='▮▮'} else {audio.pause(); playPause.textContent='▶︎'}
+    })
+
+    // update time and progress
+    audio.addEventListener('timeupdate', ()=>{
+      const cur = audio.currentTime || 0;
+      const dur = audio.duration || 0;
+      currentText.textContent = formatTime(cur);
+      durationText.textContent = formatTime(dur);
+      const pct = dur ? (cur/dur)*100 : 0;
+      bar.style.width = pct + '%';
+    })
+
+    audio.addEventListener('play', ()=>{playPause.textContent='▮▮'});
+    audio.addEventListener('pause', ()=>{playPause.textContent='▶︎'});
+    audio.addEventListener('loadedmetadata', ()=>{
+      durationText.textContent = formatTime(audio.duration || 0);
+    })
+
+    // progress seek by click
+    progress.addEventListener('click', (e)=>{
+      if(!audio.src || !audio.duration) return;
+      const rect = progress.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const pct = Math.max(0, Math.min(1, x / rect.width));
+      audio.currentTime = pct * audio.duration;
+    })
+
+    // helper
+    function formatTime(sec){
+      if(!isFinite(sec)) return '0:00';
+      sec = Math.floor(sec);
+      const m = Math.floor(sec/60);
+      const s = String(sec % 60).padStart(2,'0');
+      return `${m}:${s}`;
+    }
+
+    // Carousel: make snapping work with touch and optionally add small indicator
+    const carousel = document.getElementById('carousel');
+    // optionally center first item
+
+    // Zoom modal
+    const zoom = document.getElementById('zoom');
+    const zoomImg = document.getElementById('zoomImg');
+    const closeX = document.getElementById('closeX');
+
+    document.querySelectorAll('.sheet img').forEach(img=>{
+      img.addEventListener('click', ()=>{
+        zoomImg.src = img.src;
+        zoom.classList.add('active');
+      })
+    })
+
+    // close on click of zoomed image or X
+    zoomImg.addEventListener('click', ()=>{ zoom.classList.remove('active'); zoomImg.src = '' });
+    closeX.addEventListener('click', ()=>{ zoom.classList.remove('active'); zoomImg.src = '' });
+    // also close on overlay click outside image
+    zoom.addEventListener('click', (e)=>{ if(e.target === zoom) { zoom.classList.remove('active'); zoomImg.src=''} });
+
+    // keyboard accessibility: space toggles play/pause
+    window.addEventListener('keydown', (e)=>{ if(e.code === 'Space'){ e.preventDefault(); playPause.click(); } })
+
+    // If user wants to preload audio files they can add <audio preload> or set audio.preload = 'metadata' here.
+  </script>
+</body>
+</html>
